@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valorant Performance Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+            background-color: #0f1923;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+
+        .logo {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 150px;
+            height: auto;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 30px;
+            width: 100%;
+            max-width: 400px;
+            margin: 50px auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        h1, h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #ff4655;
+        }
+
+        .input-field {
+            margin-bottom: 20px;
+        }
+
+        .input-field input {
+            width: 100%;
+            padding: 10px 15px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            color: #fff;
+            outline: none;
+        }
+
+        .login-btn {
+            background: linear-gradient(145deg, #ff4655, #e03e4a);
+            color: white;
+            padding: 12px 25px;
+            width: 100%;
+            font-size: 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.3s, background 0.3s ease;
+        }
+
+        .login-btn:hover {
+            transform: scale(1.05);
+            background: linear-gradient(145deg, #e03e4a, #ff4655);
+        }
+
+        #loading, #error-message {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        #performance-analysis {
+            display: none;
+            margin-top: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            color: #ff4655;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        th {
+            background-color: rgba(255, 69, 85, 0.2);
+            color: #ff4655;
+        }
+
+        .chart-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+
+        .chart {
+            width: 48%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .chart-container {
+                flex-direction: column;
+            }
+
+            .chart {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <video class="background-video" autoplay muted onended="this.pause()">
+        <source src="Valo_record.mp4" type="video/mp4">
+        Your browser does not support the video PlatformID.
+    </video>
+
+    <img src="Riot_Games.png" alt="Riot Games Logo" class="logo">
+
+    <div class="container">
+        <h1>Valorant Performance Tracker</h1>
+
+        <div class="login-container">
+            <h2>Enter Riot ID</h2>
+            <form id="riot-form">
+                <div class="input-field">
+                    <input type="text" id="riot-id" placeholder="username#PlatformID" required>
+                </div>
+                <button class="login-btn" type="submit">Search Profile</button>
+            </form>
+        </div>
+
+        <div id="loading">Loading...</div>
+        <div id="error-message"></div>
+
+        <div id="performance-analysis">
+            <h2 id="player-name"></h2>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Average KDA</h3>
+                    <p id="avg-kda"></p>
+                </div>
+                <div class="stat-card">
+                    <h3>Win Rate</h3>
+                    <p id="win-rate"></p>
+                </div>
+                <div class="stat-card">
+                    <h3>Headshot %</h3>
+                    <p id="headshot-percenPlatformIDe"></p>
+                </div>
+                <div class="stat-card">
+                    <h3>Total Matches</h3>
+                    <p id="total-matches"></p>
+                </div>
+                <div class="stat-card">
+                    <h3>Overall Accuracy</h3>
+                    <p id="overall-accuracy"></p>
+                </div>
+            </div>
+
+            <h2>Recent Matches</h2>
+            <table id="match-history">
+                <thead>
+                    <tr>
+                        <th>Agent</th>
+                        <th>K/D/A</th>
+                        <th>DPR</th>
+                        <th>HS%</th>
+                        <th>Result</th>
+                        <th>Last Played</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <h2>Weapon Performance</h2>
+            <table id="weapon-stats">
+                <thead>
+                    <tr>
+                        <th>Weapon</th>
+                        <th>Kills</th>
+                        <th>Headshots</th>
+                        <th>Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <div class="chart-container">
+                <div class="chart">
+                    <canvas id="kda-chart"></canvas>
+                </div>
+                <div class="chart">
+                    <canvas id="agent-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API base URL
+        const API_BASE_URL = 'https://valorant-api.com/v1';
+
+        // DOM elements
+        const riotForm = document.getElementById('riot-form');
+        const loadingElement = document.getElementById('loading');
+        const errorElement = document.getElementById('error-message');
+        const performanceAnalysis = document.getElementById('performance-analysis');
+
+        // Store chart instances
+        let kdaChart = null;
+        let agentChart = null;
+
+        // Event listener for form submission
+        riotForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const riotId = document.getElementById('riot-id').value;
+            
+            const [username, PlatformID] = riotId.split('#');
+            
+            if (!username || !PlatformID || !/^\d{4}$/.test(PlatformID)) {
+                showError("Please enter a valid Riot ID in the format username#PlatformID, where PlatformID is exactly 4 digits.");
+                return;
+            }
+            
+            await fetchPlayerStats(username, PlatformID);
+        });
+
+        // Function to fetch player stats (simulated)
+        async function fetchPlayerStats(username, PlatformID) {
+            showLoading();
+            hideError();
+            hidePerformanceAnalysis();
+
+            try {
+                // Fetch agents data from Valorant API
+                const agentsResponse = await fetch(`${API_BASE_URL}/agents?isPlayableCharacter=true`);
+                const agentsData = await agentsResponse.json();
+                
+                // Generate simulated match data
+                const matches = generateSimulatedMatches(agentsData.data);
+
+                displayPerformanceAnalysis(matches, username, PlatformID);
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // Function to generate simulated match data
+        function generateSimulatedMatches(agents) {
+            const weapons = ['Vandal', 'Phantom', 'Operator', 'Sheriff', 'Spectre'];
+            return Array.from({length: 5}, (_, index) => {
+                const agent = agents[Math.floor(Math.random() * agents.length)];
+                const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+                const kills = Math.floor(Math.random() * 30) + 5;
+                const deaths = Math.floor(Math.random() * 20) + 1;
+                const assists = Math.floor(Math.random() * 15);
+                const headshots = Math.floor(Math.random() * kills);
+                return {
+                    agent: agent,
+                    kills: kills,
+                    deaths: deaths,
+                    assists: assists,
+                    damagePerRound: Math.floor(Math.random() * 300) + 100,
+                    headshotPercenPlatformIDe: Math.floor((headshots / kills) * 100),
+                    result: Math.random() > 0.5 ? 'Win' : 'Loss',
+                    lastPlayed: new Date(Date.now() - (index * 24 * 60 * 60 * 1000)).toLocaleString(),
+                    weapon: weapon,
+                    weaponKills: kills,
+                    weaponHeadshots: headshots,
+                    weaponAccuracy: Math.floor(Math.random() * 40) + 60
+                };
+            });
+        }
+
+        // Function to display performance analysis
+        function displayPerformanceAnalysis(matches, username, PlatformID) {
+            document.getElementById('player-name').textContent = `${username}#${PlatformID}`;
+
+            const stats = calculateStats(matches);
+            displayOverallStats(stats);
+            displayMatchHistory(matches);
+            displayWeaponStats(matches);
+            createKDAChart(matches);
+            createAgentChart(matches);
+
+            showPerformanceAnalysis();
+        }
+
+        // Function to calculate overall stats
+        function calculateStats(matches) {
+            const totalKills = matches.reduce((sum, match) => sum + match.kills, 0);
+            const totalDeaths = matches.reduce((sum, match) => sum + match.deaths, 0);
+            const totalAssists = matches.reduce((sum, match) => sum + match.assists, 0);
+            const wins = matches.filter(match => match.result === 'Win').length;
+            const totalShots = matches.reduce((sum, match) => sum + (match.kills / (match.weaponAccuracy / 100)), 0);
+            const totalHits = matches.reduce((sum, match) => sum + match.kills, 0);
+
+            return {
+                avgKDA: ((totalKills + totalAssists) / totalDeaths).toFixed(2),
+                winRate: ((wins / matches.length) * 100).toFixed(2),
+                headshotPercenPlatformIDe: (matches.reduce((sum, match) => sum + match.headshotPercenPlatformIDe, 0) / matches.length).toFixed(2),
+                totalMatches: matches.length,
+                overallAccuracy: ((totalHits / totalShots) * 100).toFixed(2)
+            };
+        }
+
+        // Function to display overall stats
+        function displayOverallStats(stats) {
+            document.getElementById('avg-kda').textContent = stats.avgKDA;
+            document.getElementById('win-rate').textContent = `${stats.winRate}%`;
+            document.getElementById('headshot-percenPlatformIDe').textContent = `${stats.headshotPercenPlatformIDe}%`;
+            document.getElementById('total-matches').textContent = stats.totalMatches;
+            document.getElementById('overall-accuracy').textContent = `${stats.overallAccuracy}%`;
+        }
+
+        // Function to display match history
+        function displayMatchHistory(matches) {
+            const tableBody = document.querySelector('#match-history tbody');
+            tableBody.innerHTML = '';
+
+            matches.forEach(match => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${match.agent.displayName}</td>
+                    <td>${match.kills}/${match.deaths}/${match.assists}</td>
+                    <td>${match.damagePerRound}</td>
+                    <td>${match.headshotPercenPlatformIDe}%</td>
+                    <td>${match.result}</td>
+                    <td>${match.lastPlayed}</td>
+                `;
+            });
+        }
+
+        // Function to display weapon stats
+        function displayWeaponStats(matches) {
+            const tableBody = document.querySelector('#weapon-stats tbody');
+            tableBody.innerHTML = '';
+
+            const weaponStats = {};
+            matches.forEach(match => {
+                if (!weaponStats[match.weapon]) {
+                    weaponStats[match.weapon] = { kills: 0, headshots: 0, shots: 0 };
+                }
+                weaponStats[match.weapon].kills += match.weaponKills;
+                weaponStats[match.weapon].headshots += match.weaponHeadshots;
+                weaponStats[match.weapon].shots += Math.round(match.weaponKills / (match.weaponAccuracy / 100));
+            });
+
+            for (const [weapon, stats] of Object.entries(weaponStats)) {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td>${weapon}</td>
+                    <td>${stats.kills}</td>
+                    <td>${stats.headshots}</td>
+                    <td>${((stats.kills / stats.shots) * 100).toFixed(2)}%</td>
+                `;
+            }
+        }
+
+        // Function to create KDA chart
+        function createKDAChart(matches) {
+            const ctx = document.getElementById('kda-chart').getContext('2d');
+            const kdaData = matches.map(match => (match.kills + match.assists) / Math.max(1, match.deaths));
+
+            // Destroy existing chart if it exists
+            if (kdaChart) {
+                kdaChart.destroy();
+            }
+
+            kdaChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Match 5', 'Match 4', 'Match 3', 'Match 2', 'Match 1'],
+                    datasets: [{
+                        label: 'KDA',
+                        data: kdaData.reverse(),
+                        borderColor: '#ff4655',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'KDA Trend',
+                            color: '#ffffff',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Function to create agent chart
+        function createAgentChart(matches) {
+            const ctx = document.getElementById('agent-chart').getContext('2d');
+            const agentCounts = {};
+
+            matches.forEach(match => {
+                agentCounts[match.agent.displayName] = (agentCounts[match.agent.displayName] || 0) + 1;
+            });
+
+            // Destroy existing chart if it exists
+            if (agentChart) {
+                agentChart.destroy();
+            }
+
+            agentChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(agentCounts),
+                    datasets: [{
+                        label: 'Matches Played',
+                        data: Object.values(agentCounts),
+                        backgroundColor: [
+                            '#ff4655', '#0f1923', '#00ffbc', '#ece8e1', '#ffc300',
+                            '#ff9900', '#ff00ff', '#00ff00', '#0000ff', '#ff0000'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Agents Played',
+                            color: '#ffffff',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Helper functions for UI state management
+        function showLoading() {
+            loadingElement.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loadingElement.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function hideError() {
+            errorElement.style.display = 'none';
+        }
+
+        function showPerformanceAnalysis() {
+            performanceAnalysis.style.display = 'block';
+        }
+
+        function hidePerformanceAnalysis() {
+            performanceAnalysis.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
